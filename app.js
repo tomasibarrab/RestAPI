@@ -38,47 +38,36 @@ router.post('/authenticate', function(req, res) {
   Student.findOne({
     name: req.body.name
   }, function(err, student) {
-
     if (err) throw err;
-
     if (!student) {
       res.status(401).json({ success: false, message: 'Authentication failed. Student not found.' });
     } else if (student) {
-
       // check if password matches
       if (student.password != req.body.password) {
         res.status(401).json({ success: false, message: 'Authentication failed. Wrong password.' });
+      } else if (student.secWord != req.body.secWord) {
+        res.status(401).json({ success: false, message: 'Wrong security word.' });
       } else {
-
         // if student is found and password is right
         // create a token
-        var token = jwt.sign(student, app.get('superSecret'), {
+        var token = jwt.sign(student, app.set('superSecret'), {
           expiresInMinutes: 1440 // expires in 24 hours
         });
-
         // return the information including token as JSON
-        res.status(200).json({
-          success: true,
-          token: token
-        });
+        res.status(200).json({ success: true, token: token });
       }
-
     }
-
   });
 });
 
 // route middleware to verify a token
 router.use(function(req, res, next) {
-
   // check header or url parameters or post parameters for token
-  var token = req.body.token || req.query.token || req.headers['x-access-token'];
-
+  var token = req.query.token;
   // decode token
   if (token) {
-
     // verifies secret and checks exp
-    jwt.verify(token, app.get('superSecret'), function(err, decoded) {
+    jwt.verify(token, app.set('superSecret'), function(err, decoded) {
       if (err) {
         return res.status(400).json({ success: false, message: 'Failed to authenticate token.' });
       } else {
@@ -87,28 +76,24 @@ router.use(function(req, res, next) {
         next();
       }
     });
-
   } else {
-
     // if there is no token
     // return an error
     return res.status(403).send({
         success: false,
         message: 'No token provided.'
     });
-
   }
 });
 
 router.route('/students')
-
     // create a student
     .post(function(req, res) {
         var student = new Student();      // create the new student with the request parameters
         student.name = req.body.name;
         student.password = req.body.password;
         student.admin = req.body.admin;
-
+        student.secWord = req.body.secWord;
         // save the student and check for errors
         student.save(function(err) {
             if (err)
@@ -147,6 +132,7 @@ router.route('/students')
             student.name = req.body.name;
             student.password = req.body.password;
             student.admin = req.body.admin;
+            student.secWord = req.body.admin;
             // save the student
             student.save(function(err) {
                 if (err)
